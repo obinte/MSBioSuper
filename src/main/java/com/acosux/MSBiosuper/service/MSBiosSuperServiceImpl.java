@@ -14,7 +14,6 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -53,6 +52,11 @@ public class MSBiosSuperServiceImpl implements MSBioSuperService {
     @Override
     public RespuestaWebTO getListadoLiquidacionDetalleProductoTO(Map<String, Object> parametros) throws Exception {
         return restTemplate.postForObject(ENDPOINT + "/todocompuWS/produccionWebController/getListadoLiquidacionDetalleProducto", createTokenForUser(parametros), RespuestaWebTO.class);
+    }
+
+    @Override
+    public RespuestaWebTO listarLiquidacionesDetalle(Map<String, Object> parametros) throws Exception {
+        return restTemplate.postForObject(ENDPOINT + "/todocompuWS/produccionWebController/listarLiquidacionesDetalle", createTokenForUser(parametros), RespuestaWebTO.class);
     }
 
 }
