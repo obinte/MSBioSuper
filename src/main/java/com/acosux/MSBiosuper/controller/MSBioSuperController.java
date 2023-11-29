@@ -48,5 +48,16 @@ public class MSBioSuperController {
         }
         return resp;
     }
+    
+    @RequestMapping("/listarLiquidacionesDetalle")
+    public RespuestaWebTO listarLiquidacionesDetalle(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            return mSBioSuperService.listarLiquidacionesDetalle(parametros);
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
 
 }
