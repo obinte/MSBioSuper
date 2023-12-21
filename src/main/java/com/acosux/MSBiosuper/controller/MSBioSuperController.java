@@ -38,6 +38,31 @@ public class MSBioSuperController {
         return resp;
     }
 
+    @RequestMapping("/getListaResumenSiembra")
+    public RespuestaWebTO getListaResumenSiembra(HttpServletRequest request, @RequestBody Map<String, Object> parametros) throws Exception {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        parametros.put("tipoResumen", "SIEMBRA");
+        try {
+            resp = mSBioSuperService.getListaResumenCorridaTO(parametros);
+            return resp;
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
+
+    @RequestMapping("/getConsumosDiarios")
+    public RespuestaWebTO getConsumosDiarios(HttpServletRequest request, @RequestBody Map<String, Object> parametros) throws Exception {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            resp = mSBioSuperService.getConsumosDiarios(parametros);
+            return resp;
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
+
     @RequestMapping("/getListadoLiquidacionDetalleProducto")
     public RespuestaWebTO getListadoLiquidacionDetalleProducto(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
         RespuestaWebTO resp = new RespuestaWebTO();
@@ -48,7 +73,7 @@ public class MSBioSuperController {
         }
         return resp;
     }
-    
+
     @RequestMapping("/listarLiquidacionesDetalle")
     public RespuestaWebTO listarLiquidacionesDetalle(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
         RespuestaWebTO resp = new RespuestaWebTO();
