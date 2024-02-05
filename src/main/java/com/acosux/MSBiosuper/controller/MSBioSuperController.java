@@ -95,5 +95,16 @@ public class MSBioSuperController {
         }
         return resp;
     }
+    
+    @RequestMapping("/obtenerListadoGramajes")
+    public RespuestaWebTO obtenerListadoGramajes(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            return mSBioSuperService.obtenerListadoGramajes(parametros);
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
 
 }

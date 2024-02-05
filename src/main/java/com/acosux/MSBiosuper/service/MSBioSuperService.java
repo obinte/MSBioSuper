@@ -24,4 +24,6 @@ public interface MSBioSuperService {
 
     public RespuestaWebTO listarCostosPorPiscina(Map<String, Object> parametros) throws Exception;
 
+    public RespuestaWebTO obtenerListadoGramajes(Map<String, Object> parametros) throws Exception;
+
 }
