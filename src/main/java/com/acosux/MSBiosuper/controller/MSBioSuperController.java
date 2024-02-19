@@ -28,7 +28,7 @@ public class MSBioSuperController {
     @RequestMapping("/getListaResumenPesca")
     public RespuestaWebTO getListaResumenPesca(HttpServletRequest request, @RequestBody Map<String, Object> parametros) throws Exception {
         RespuestaWebTO resp = new RespuestaWebTO();
-        parametros.put("tipoResumen", "PESCA");
+        parametros.put("tipoResumen", "PESCA*");
         try {
             resp = mSBioSuperService.getListaResumenCorridaTO(parametros);
             return resp;
