@@ -106,5 +106,27 @@ public class MSBioSuperController {
         }
         return resp;
     }
+    
+    @RequestMapping("/listarVentasBioSuper")
+    public RespuestaWebTO listarVentasBioSuper(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            return mSBioSuperService.listarVentasBioSuper(parametros);
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
+    
+    @RequestMapping("/getListaProductosGeneralTO")
+    public RespuestaWebTO getListaProductosGeneralTO(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            return mSBioSuperService.getListaProductosGeneralTO(parametros);
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
 
 }
