@@ -83,5 +83,10 @@ public class MSBiosSuperServiceImpl implements MSBioSuperService {
     public RespuestaWebTO listarVentasBioSuper(Map<String, Object> parametros) throws Exception {
         return restTemplate.postForObject(ENDPOINT + "/todocompuWS/inventarioWebController/listarVentasBioSuper", createTokenForUser(parametros), RespuestaWebTO.class);
     }
+    
+    @Override
+    public RespuestaWebTO getApiCarListaCuentasPorCobrarDetalladoTO(Map<String, Object> parametros) throws Exception {
+        return restTemplate.postForObject(ENDPOINT + "/todocompuWS/carteraWebController/getApiCarListaCuentasPorCobrarDetalladoTO", createTokenForUser(parametros), RespuestaWebTO.class);
+    }
 
 }

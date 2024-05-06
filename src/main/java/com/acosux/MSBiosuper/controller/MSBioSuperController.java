@@ -128,5 +128,16 @@ public class MSBioSuperController {
         }
         return resp;
     }
-
+    
+    @RequestMapping("/getApiCarListaCuentasPorCobrarDetalladoTO")
+    public RespuestaWebTO getApiCarListaCuentasPorCobrarDetalladoTO(HttpServletRequest request, @RequestBody Map<String, Object> parametros) {
+        RespuestaWebTO resp = new RespuestaWebTO();
+        try {
+            return mSBioSuperService.getApiCarListaCuentasPorCobrarDetalladoTO(parametros);
+        } catch (Exception e) {
+            resp.setOperacionMensaje(e.getMessage());
+        }
+        return resp;
+    }
+   
 }
