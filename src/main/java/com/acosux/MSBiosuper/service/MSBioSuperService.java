@@ -32,4 +32,6 @@ public interface MSBioSuperService {
     
     public RespuestaWebTO getApiCarListaCuentasPorCobrarDetalladoTO(Map<String, Object> parametros) throws Exception;
 
+    public RespuestaWebTO getListadoComprasDetalleProducto(Map<String, Object> parametros) throws Exception;
+
 }
