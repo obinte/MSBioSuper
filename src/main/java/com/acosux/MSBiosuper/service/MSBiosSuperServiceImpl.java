@@ -6,7 +6,6 @@
 package com.acosux.MSBiosuper.service;
 
 import com.acosux.MSBiosuper.dao.MSBioSuperDao;
-import com.acosux.MSBiosuper.util.RespuestaWebTO;
 import com.acosux.MSBiosuper.util.UtilsDate;
 import com.acosux.MSBiosuper.util.UtilsJSON;
 import com.acosux.MSBiosuper.util.entity.CuentasPorCobrarDetalladoApiTO;
@@ -26,11 +25,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 /**
  *
@@ -41,9 +38,6 @@ public class MSBiosSuperServiceImpl implements MSBioSuperService {
 
     @Autowired
     private MSBioSuperDao bioSuperDao;
-    private final RestTemplate restTemplate = new RestTemplate();
-    @Value("${acosux.endpoint}")
-    private String ENDPOINT;
     private static final long VALIDITY_TIME_MS = 10 * 24 * 60 * 60 * 1000;// 10 days Validity
     private final String secret = "mrin";
 
