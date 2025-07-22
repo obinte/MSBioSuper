@@ -41,7 +41,7 @@ public class MSBioSuperController {
     @RequestMapping("/getListaResumenPesca")
     public RespuestaWebTO getListaResumenPesca(HttpServletRequest request, @RequestBody Map<String, Object> parametros) throws Exception {
         RespuestaWebTO resp = new RespuestaWebTO();
-        parametros.put("tipoResumen", "PESCA*");
+        parametros.put("tipoResumen", "PESCA");
         try {
             List<PrdResumenCorridaTO> respues = mSBioSuperService.getListaResumenCorridaTO(parametros);
             if (respues.size() > 1) {
@@ -61,7 +61,7 @@ public class MSBioSuperController {
     @RequestMapping("/getListaResumenSiembra")
     public RespuestaWebTO getListaResumenSiembra(HttpServletRequest request, @RequestBody Map<String, Object> parametros) throws Exception {
         RespuestaWebTO resp = new RespuestaWebTO();
-        parametros.put("tipoResumen", "SIEMBRA*");
+        parametros.put("tipoResumen", "SIEMBRA");
         try {
             List<PrdResumenCorridaTO> respues = mSBioSuperService.getListaResumenCorridaTO(parametros);
             if (respues.size() > 1) {
