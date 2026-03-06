@@ -166,7 +166,7 @@ public class MSBioSuperDaoImpl implements MSBioSuperDao {
         } else {
             bodega = null;
         }
-        String sql = "SELECT * FROM inventario.fun_compras_detalle_producto('" + empresa + "'," + sector + "," + piscina + "," + null + ",'" + fechaDesde + "', '" + fechaHasta + "'," + bodega + "," + incluirIMB + ")";
+        String sql = "SELECT * FROM inventario.fun_compras_detalle_producto('" + empresa + "'," + sector + "," + piscina + "," + null + "," + null + ",'" + fechaDesde + "', '" + fechaHasta + "'," + bodega + "," + incluirIMB + ")";
 
         return genericSQLDao.obtenerPorSql(sql, InvComprasDetalleProductoTO.class
         );
