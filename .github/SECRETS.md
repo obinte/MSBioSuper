@@ -88,7 +88,7 @@ gh secret set SONAR_TOKEN --body "tu-token-sonarcloud"
 gh secret set SNYK_TOKEN --body "tu-token-snyk"
 
 # Configurar SLACK_WEBHOOK_URL
-gh secret set SLACK_WEBHOOK_URL --body "https://hooks.slack.com/services/..."
+gh secret set SLACK_WEBHOOK_URL --body "https://hooks.slack.com/services/YOUR_WORKSPACE/YOUR_CHANNEL/YOUR_TOKEN"
 ```
 
 ### Método 3: API de GitHub
