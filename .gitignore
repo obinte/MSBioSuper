@@ -41,3 +41,15 @@ build/
 *.key
 *.pem
 secrets/
+jwt-secret-*.txt
+
+### Logs ###
+*.log
+logs/
+app.log
+
+### Docker Override ###
+docker-compose.override.yml
+
+### IDE ###
+.DS_Store
