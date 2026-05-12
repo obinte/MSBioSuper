@@ -1,0 +1,155 @@
+# ============================================================================
+# Docker Compose para MSBioSuper - Despliegue WAR en Tomcat
+# ============================================================================
+# Este archivo define la configuración para despliegue WAR en Tomcat 10.
+# Alternativa al despliegue JAR standalone.
+#
+# INSTRUCCIONES DE USO:
+# 1. Copiar .env.example a .env y configurar variables
+# 2. Iniciar servicios: docker-compose -f docker-compose.war.yml up -d
+# 3. Ver logs: docker-compose -f docker-compose.war.yml logs -f
+# 4. Detener servicios: docker-compose -f docker-compose.war.yml down
+#
+# DIFERENCIAS CON docker-compose.yml:
+# - Usa Dockerfile.war en lugar de Dockerfile
+# - Despliega en Tomcat 10 en lugar de Tomcat embebido
+# - Mismo comportamiento funcional
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # --------------------------------------------------------------------------
+  # Servicio: PostgreSQL Database
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: msbiosuper-postgres-war
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_USER: ${JDBC_USER:-administradores}
+      POSTGRES_PASSWORD: ${JDBC_PASSWORD:-@dm1n$t0d0c0mPU$}
+      POSTGRES_DB: ${JDBC_DATABASE:-cipolliny_Abril_2026}
+      TZ: America/Guayaquil
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_EC.UTF-8"
+    
+    ports:
+       - "5433:5432"
+    
+    volumes:
+      - postgres_data_war:/var/lib/postgresql/data
+    
+    networks:
+      - msbiosuper-network-war
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${JDBC_USER:-administradores} -d ${JDBC_DATABASE:-cipolliny_Abril_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # --------------------------------------------------------------------------
+  # Servicio: MSBioSuper Application (WAR en Tomcat 10)
+  # --------------------------------------------------------------------------
+  msbiosuper:
+    build:
+      context: .
+      dockerfile: Dockerfile.war
+      args:
+        - JAVA_VERSION=21
+    
+    container_name: msbiosuper-app-war
+    restart: unless-stopped
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    environment:
+      # Configuración de Base de Datos
+      JDBC_SERVER: postgres
+      JDBC_PORT: 5432
+      JDBC_DATABASE: ${JDBC_DATABASE:-cipolliny_Abril_2026}
+      JDBC_USER: ${JDBC_USER:-administradores}
+      JDBC_PASSWORD: ${JDBC_PASSWORD:-@dm1n$t0d0c0mPU$}
+      
+      # Configuración de Seguridad JWT
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      
+      # Configuración de CORS
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:4200}
+      
+      # Configuración de Spring Boot
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      
+      # Configuración de Tomcat y JVM
+      CATALINA_OPTS: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+ZGenerational"
+      JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
+      
+      # Zona Horaria
+      TZ: America/Guayaquil
+    
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    
+    volumes:
+      - msbiosuper_logs_war:/app/logs
+      - tomcat_logs:/usr/local/tomcat/logs
+    
+    networks:
+      - msbiosuper-network-war
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/liveness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data_war:
+    driver: local
+    name: msbiosuper_postgres_data_war
+  
+  msbiosuper_logs_war:
+    driver: local
+    name: msbiosuper_logs_war
+  
+  tomcat_logs:
+    driver: local
+    name: msbiosuper_tomcat_logs
+
+networks:
+  msbiosuper-network-war:
+    driver: bridge
+    name: msbiosuper-network-war
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16

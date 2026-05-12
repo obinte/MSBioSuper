@@ -1,0 +1,15 @@
+# Application Layer (Capa de Aplicación)
+
+Esta capa orquesta objetos de dominio para cumplir casos de uso específicos.
+
+## Componentes:
+- **Casos de Uso**: Reglas de negocio específicas de la aplicación
+- **DTOs**: Objetos de transferencia de datos para entrada/salida
+- **Mappers**: Conversión entre DTOs y entidades de dominio
+- **Servicios de Aplicación**: Coordinan múltiples casos de uso
+
+## Reglas:
+- Depende de la capa de dominio
+- Sin dependencia directa de infraestructura
+- Orquesta objetos de dominio
+- Maneja límites transaccionales

@@ -1,0 +1,250 @@
+# Ejemplo de workflow de GitHub Actions para pruebas de rendimiento
+# 
+# Para usar este workflow:
+# 1. Renombre este archivo a performance-tests.yml
+# 2. Configure los secrets necesarios en GitHub:
+#    - JWT_SECRET: Secreto para generar tokens JWT
+#    - DB_PASSWORD: Contraseña de base de datos de pruebas
+# 3. Ajuste los parámetros según sus necesidades
+
+name: Performance Tests
+
+on:
+  # Ejecutar manualmente desde GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Tipo de prueba a ejecutar'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - load
+          - stress
+          - spike
+      users:
+        description: 'Número de usuarios concurrentes'
+        required: false
+        default: '100'
+      duration:
+        description: 'Duración de la prueba en segundos'
+        required: false
+        default: '300'
+  
+  # Ejecutar en schedule (ejemplo: todos los domingos a las 2 AM)
+  schedule:
+    - cron: '0 2 * * 0'
+  
+  # Ejecutar en pull requests a main (solo prueba de carga ligera)
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/main/**'
+      - 'pom.xml'
+
+jobs:
+  performance-test:
+    name: Ejecutar Pruebas de Rendimiento
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: msbiosuper_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Configurar base de datos de pruebas
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          # Crear esquema y datos de prueba
+          psql -h localhost -U postgres -d msbiosuper_test -f scripts/test-data.sql || true
+      
+      - name: Compilar aplicación
+        run: mvn clean package -DskipTests
+      
+      - name: Iniciar aplicación
+        env:
+          JDBC_SERVER: localhost
+          JDBC_PORT: 5432
+          JDBC_DATABASE: msbiosuper_test
+          JDBC_USER: postgres
+          JDBC_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SERVER_PORT: 8080
+        run: |
+          java -jar target/MSBioSuper-1.0.jar &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          
+          # Esperar a que la aplicación inicie
+          echo "Esperando a que la aplicación inicie..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/actuator/health > /dev/null; then
+              echo "Aplicación iniciada correctamente"
+              break
+            fi
+            echo "Intento $i/30..."
+            sleep 2
+          done
+      
+      - name: Generar token JWT
+        id: jwt
+        run: |
+          # Crear usuario de prueba (ajustar según su implementación)
+          TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/security/authenticate \
+            -H "Content-Type: application/json" \
+            -d '{"username": "testuser", "password": "testpass123"}' \
+            | jq -r '.token')
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+      
+      - name: Ejecutar prueba de carga
+        if: github.event.inputs.test_type == 'load' || github.event_name == 'schedule' || github.event_name == 'pull_request'
+        run: |
+          mvn gatling:test \
+            -Dgatling.simulationClass=msbiosuper.LoadTestSimulation \
+            -DbaseUrl=http://localhost:8080 \
+            -Dtest.jwt.token="${{ steps.jwt.outputs.token }}" \
+            -Dload.users=${{ github.event.inputs.users || '50' }} \
+            -Dload.testDuration=${{ github.event.inputs.duration || '180' }}
+      
+      - name: Ejecutar prueba de estrés
+        if: github.event.inputs.test_type == 'stress'
+        run: |
+          mvn gatling:test \
+            -Dgatling.simulationClass=msbiosuper.StressTestSimulation \
+            -DbaseUrl=http://localhost:8080 \
+            -Dtest.jwt.token="${{ steps.jwt.outputs.token }}" \
+            -Dstress.users=${{ github.event.inputs.users || '200' }} \
+            -Dstress.testDuration=${{ github.event.inputs.duration || '300' }}
+      
+      - name: Ejecutar prueba de pico
+        if: github.event.inputs.test_type == 'spike'
+        run: |
+          mvn gatling:test \
+            -Dgatling.simulationClass=msbiosuper.SpikeTestSimulation \
+            -DbaseUrl=http://localhost:8080 \
+            -Dtest.jwt.token="${{ steps.jwt.outputs.token }}" \
+            -Dspike.users=${{ github.event.inputs.users || '500' }} \
+            -Dspike.duration=${{ github.event.inputs.duration || '30' }}
+      
+      - name: Detener aplicación
+        if: always()
+        run: |
+          if [ ! -z "$APP_PID" ]; then
+            kill $APP_PID || true
+          fi
+      
+      - name: Subir reportes de Gatling
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gatling-reports-${{ github.event.inputs.test_type || 'load' }}-${{ github.run_number }}
+          path: target/gatling/
+          retention-days: 30
+      
+      - name: Publicar resultados como comentario (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Buscar el directorio de resultados más reciente
+            const gatlingDir = 'target/gatling';
+            const dirs = fs.readdirSync(gatlingDir);
+            const latestDir = dirs.sort().reverse()[0];
+            const statsFile = path.join(gatlingDir, latestDir, 'js', 'stats.json');
+            
+            if (fs.existsSync(statsFile)) {
+              const stats = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+              
+              const comment = `## 📊 Resultados de Pruebas de Rendimiento
+              
+              **Tipo de prueba**: Carga (Load Test)
+              **Usuarios concurrentes**: ${{ github.event.inputs.users || '50' }}
+              **Duración**: ${{ github.event.inputs.duration || '180' }}s
+              
+              ### Métricas Globales
+              
+              | Métrica | Valor | Objetivo |
+              |---------|-------|----------|
+              | Total de peticiones | ${stats.numberOfRequests.total} | - |
+              | Peticiones exitosas | ${stats.numberOfRequests.ok} (${((stats.numberOfRequests.ok / stats.numberOfRequests.total) * 100).toFixed(2)}%) | > 95% |
+              | Tiempo de respuesta medio | ${stats.meanResponseTime.total}ms | < 1000ms |
+              | Tiempo de respuesta p95 | ${stats.percentiles3.total}ms | < 500ms |
+              | Tiempo de respuesta p99 | ${stats.percentiles4.total}ms | < 1000ms |
+              
+              ### Resultado
+              
+              ${stats.percentiles3.total < 500 && (stats.numberOfRequests.ok / stats.numberOfRequests.total) > 0.95 ? '✅ **PASS**: Cumple objetivos de rendimiento' : '⚠️ **WARNING**: No cumple todos los objetivos'}
+              
+              📈 [Ver reporte completo en Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+      
+      - name: Verificar objetivos de rendimiento
+        run: |
+          # Extraer métricas del reporte de Gatling
+          GATLING_DIR=$(ls -t target/gatling | head -1)
+          STATS_FILE="target/gatling/$GATLING_DIR/js/stats.json"
+          
+          if [ -f "$STATS_FILE" ]; then
+            # Extraer p95 y tasa de éxito
+            P95=$(jq '.percentiles3.total' "$STATS_FILE")
+            SUCCESS_RATE=$(jq '.numberOfRequests.ok / .numberOfRequests.total * 100' "$STATS_FILE")
+            
+            echo "P95: ${P95}ms"
+            echo "Tasa de éxito: ${SUCCESS_RATE}%"
+            
+            # Verificar objetivos (TR-22)
+            if (( $(echo "$P95 > 500" | bc -l) )); then
+              echo "❌ FAIL: P95 ($P95ms) excede objetivo de 500ms"
+              exit 1
+            fi
+            
+            if (( $(echo "$SUCCESS_RATE < 95" | bc -l) )); then
+              echo "❌ FAIL: Tasa de éxito ($SUCCESS_RATE%) por debajo de 95%"
+              exit 1
+            fi
+            
+            echo "✅ PASS: Cumple objetivos de rendimiento"
+          else
+            echo "⚠️ WARNING: No se encontró archivo de estadísticas"
+          fi
+
+# Notas:
+# - Este workflow requiere configurar secrets en GitHub
+# - Ajuste los umbrales según sus necesidades
+# - Para pruebas de resistencia (soak), use un workflow separado con mayor duración
+# - Considere usar un entorno de staging dedicado para pruebas de rendimiento

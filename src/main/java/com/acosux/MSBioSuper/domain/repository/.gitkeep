@@ -1,0 +1,3 @@
+# Domain Repository Interfaces (Ports)
+
+Interfaces de repositorio que definen contratos para acceso a datos.

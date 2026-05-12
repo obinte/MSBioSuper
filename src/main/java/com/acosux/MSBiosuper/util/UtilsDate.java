@@ -1,4 +1,4 @@
-package com.acosux.MSBiosuper.util;
+package com.acosux.MSBioSuper.util;
 
 import java.sql.Time;
 import java.sql.Timestamp;

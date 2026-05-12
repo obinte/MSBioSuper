@@ -1,0 +1,91 @@
+# ============================================================================
+# .dockerignore - Excluir archivos innecesarios del contexto de Docker
+# ============================================================================
+# Este archivo mejora el rendimiento del build de Docker al excluir archivos
+# que no son necesarios para construir la imagen.
+# ============================================================================
+
+# Directorios de build y target
+target/
+build/
+out/
+bin/
+
+# Archivos de IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+nb-configuration.xml
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Logs
+logs/
+*.log
+*.log.*
+*.gz
+
+# Archivos de configuración local
+.env
+.env.local
+.env.*.local
+*.local
+
+# Documentación (no necesaria en la imagen)
+docs/
+*.md
+!README.md
+
+# Archivos de prueba (ya compilados en el build)
+src/test/
+*.test.js
+*.spec.js
+
+# Archivos de CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Archivos de Maven (se descargan en el build)
+.m2/
+.mvn/wrapper/maven-wrapper.jar
+
+# Archivos de seguridad (nunca incluir en imagen)
+*.key
+*.pem
+*.p12
+*.jks
+jwt-secret-*.txt
+
+# Kiro
+.kiro/
+
+# Scripts
+scripts/

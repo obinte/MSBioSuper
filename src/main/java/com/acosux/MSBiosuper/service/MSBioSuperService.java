@@ -3,19 +3,19 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.acosux.MSBiosuper.service;
+package com.acosux.MSBioSuper.service;
 
-import com.acosux.MSBiosuper.util.entity.CuentasPorCobrarDetalladoApiTO;
-import com.acosux.MSBiosuper.util.entity.CuentasPorPagarDetalladoTO;
-import com.acosux.MSBiosuper.util.entity.InvComprasDetalleProductoTO;
-import com.acosux.MSBiosuper.util.entity.InvListaProductosGeneralTO;
-import com.acosux.MSBiosuper.util.entity.InvVentasBioSuperTO;
-import com.acosux.MSBiosuper.util.entity.PrdConsumosDiarioMSTO;
-import com.acosux.MSBiosuper.util.entity.PrdLiquidacionDetalleProductoTO;
-import com.acosux.MSBiosuper.util.entity.PrdLiquidacionesDetalleTO;
-import com.acosux.MSBiosuper.util.entity.PrdListaCostosDetalleCorridaTO;
-import com.acosux.MSBiosuper.util.entity.PrdListadoGrameajeTO;
-import com.acosux.MSBiosuper.util.entity.PrdResumenCorridaTO;
+import com.acosux.MSBioSuper.domain.model.CuentasPorCobrarDetalladoApiTO;
+import com.acosux.MSBioSuper.domain.model.CuentasPorPagarDetalladoTO;
+import com.acosux.MSBioSuper.domain.model.InvComprasDetalleProductoTO;
+import com.acosux.MSBioSuper.domain.model.InvListaProductosGeneralTO;
+import com.acosux.MSBioSuper.domain.model.InvVentasBioSuperTO;
+import com.acosux.MSBioSuper.domain.model.PrdConsumosDiarioMSTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionDetalleProductoTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionesDetalleTO;
+import com.acosux.MSBioSuper.domain.model.PrdListaCostosDetalleCorridaTO;
+import com.acosux.MSBioSuper.domain.model.PrdListadoGrameajeTO;
+import com.acosux.MSBioSuper.domain.model.PrdResumenCorridaTO;
 import java.util.List;
 import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;

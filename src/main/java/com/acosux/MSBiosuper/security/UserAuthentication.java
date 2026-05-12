@@ -1,4 +1,4 @@
-package com.acosux.MSBiosuper.security;
+package com.acosux.MSBioSuper.security;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;

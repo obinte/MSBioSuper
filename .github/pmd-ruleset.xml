@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Configuración PMD para MSBioSuper
+  
+  Este archivo define las reglas de análisis estático de código
+  que PMD aplicará al proyecto.
+  
+  Autor: Josias Rubén Aldaz Arcalles
+  Fecha: 2026-04-24
+-->
+<ruleset name="MSBioSuper PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 
+                             https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Reglas PMD personalizadas para el proyecto MSBioSuper Java 21 Migration.
+        Enfocadas en calidad de código, mejores prácticas y detección de bugs potenciales.
+    </description>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE MEJORES PRÁCTICAS                 -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/bestpractices.xml">
+        <!-- Excluir reglas que no aplican al proyecto -->
+        <exclude name="JUnitTestsShouldIncludeAssert"/>
+        <exclude name="JUnitAssertionsShouldIncludeMessage"/>
+        <exclude name="GuardLogStatement"/>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE DISEÑO DE CÓDIGO                  -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/design.xml">
+        <!-- Personalizar límites para el proyecto -->
+        <exclude name="TooManyMethods"/>
+        <exclude name="ExcessiveImports"/>
+        <exclude name="LawOfDemeter"/>
+    </rule>
+    
+    <!-- Configurar complejidad ciclomática -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="classReportLevel" value="80"/>
+            <property name="methodReportLevel" value="10"/>
+        </properties>
+    </rule>
+    
+    <!-- Configurar límites de clase -->
+    <rule ref="category/java/design.xml/ExcessiveClassLength">
+        <properties>
+            <property name="minimum" value="300"/>
+        </properties>
+    </rule>
+    
+    <!-- Configurar límites de método -->
+    <rule ref="category/java/design.xml/ExcessiveMethodLength">
+        <properties>
+            <property name="minimum" value="50"/>
+        </properties>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE DOCUMENTACIÓN                     -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/documentation.xml">
+        <!-- Relajar requisitos de documentación para DTOs y tests -->
+        <exclude name="CommentRequired"/>
+        <exclude name="CommentSize"/>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE MANEJO DE ERRORES                 -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/errorprone.xml">
+        <!-- Excluir reglas problemáticas con Spring -->
+        <exclude name="BeanMembersShouldSerialize"/>
+        <exclude name="DataflowAnomalyAnalysis"/>
+        <exclude name="NullAssignment"/>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS MULTITHREADING                       -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/multithreading.xml">
+        <!-- Todas las reglas de multithreading son importantes -->
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE RENDIMIENTO                       -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/performance.xml">
+        <!-- Excluir reglas que pueden ser problemáticas con frameworks -->
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE SEGURIDAD                         -->
+    <!-- ============================================ -->
+    
+    <rule ref="category/java/security.xml">
+        <!-- Todas las reglas de seguridad son críticas -->
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- REGLAS PERSONALIZADAS                       -->
+    <!-- ============================================ -->
+    
+    <!-- Evitar System.out.println en código de producción -->
+    <rule name="AvoidSystemOutPrintln"
+          language="java"
+          message="Evitar System.out.println, usar logger en su lugar"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            System.out.println no debe usarse en código de producción.
+            Usar un logger apropiado (SLF4J/Logback).
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //PrimaryExpression[
+                        PrimaryPrefix/Name[@Image='System.out.println'] or
+                        PrimaryPrefix/Name[@Image='System.err.println']
+                    ]
+                </value>
+            </property>
+        </properties>
+    </rule>
+    
+    <!-- Evitar printStackTrace -->
+    <rule name="AvoidPrintStackTrace"
+          language="java"
+          message="Evitar printStackTrace, usar logger para excepciones"
+          class="net.sourceforge.pmd.lang.rule.XPathRule">
+        <description>
+            printStackTrace no debe usarse. Usar logger para registrar excepciones.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    //PrimaryExpression[
+                        PrimarySuffix[@Image='printStackTrace']
+                    ]
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- ============================================ -->
+    <!-- EXCLUSIONES POR PAQUETE                     -->
+    <!-- ============================================ -->
+    
+    <!-- Excluir clases generadas -->
+    <exclude-pattern>.*/target/generated-sources/.*</exclude-pattern>
+    
+    <!-- Excluir configuraciones de Spring Boot -->
+    <exclude-pattern>.*Application\.java</exclude-pattern>
+    <exclude-pattern>.*Config\.java</exclude-pattern>
+    
+    <!-- Relajar reglas para DTOs (Records de Java 21) -->
+    <rule ref="category/java/design.xml/ImmutableField">
+        <exclude-pattern>.*/dto/.*</exclude-pattern>
+    </rule>
+    
+    <!-- Relajar reglas para clases de prueba -->
+    <rule ref="category/java/bestpractices.xml/JUnitTestContainsTooManyAsserts">
+        <exclude-pattern>.*/test/.*</exclude-pattern>
+    </rule>
+    
+    <rule ref="category/java/design.xml/ExcessiveMethodLength">
+        <exclude-pattern>.*/test/.*</exclude-pattern>
+    </rule>
+
+</ruleset>

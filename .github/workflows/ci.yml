@@ -1,0 +1,731 @@
+# ============================================
+# Workflow CI/CD - MSBioSuper Java 21 Migration
+# ============================================
+# 
+# Este workflow implementa un pipeline completo de CI/CD para el proyecto
+# MSBioSuper con Java 21, Spring Boot 3.3.x y arquitectura hexagonal.
+#
+# Jobs incluidos:
+# 1. Build - Compilación y empaquetado
+# 2. Test - Pruebas unitarias e integración
+# 3. Quality - Análisis de calidad de código
+# 4. Security - Escaneo de seguridad
+# 5. Docker - Build de imagen Docker
+#
+# Autor: Josias Rubén Aldaz Arcalles
+# Fecha: 2026-04-24
+# ============================================
+
+name: CI/CD Pipeline
+
+# ============================================
+# TRIGGERS - Cuándo ejecutar el workflow
+# ============================================
+on:
+  # Ejecutar en push a ramas principales
+  push:
+    branches: 
+      - main
+      - develop
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'release/**'
+    # Ignorar cambios solo en documentación
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+
+  # Ejecutar en pull requests hacia main y develop
+  pull_request:
+    branches: 
+      - main
+      - develop
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
+
+  # Permitir ejecución manual
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Omitir pruebas (solo para desarrollo)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      environment:
+        description: 'Entorno de despliegue'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - 'staging'
+          - 'production'
+
+# ============================================
+# VARIABLES GLOBALES
+# ============================================
+env:
+  # Configuración Java
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+  
+  # Configuración Maven
+  MAVEN_OPTS: '-Xmx1024m -XX:+UseZGC'
+  MAVEN_CLI_OPTS: '--batch-mode --errors --fail-at-end --show-version'
+  
+  # Configuración Docker
+  DOCKER_REGISTRY: 'ghcr.io'
+  DOCKER_IMAGE_NAME: 'msbiosuper'
+  
+  # Configuración de aplicación
+  SPRING_PROFILES_ACTIVE: 'test'
+  
+  # Configuración de base de datos para pruebas
+  DB_HOST: 'localhost'
+  DB_PORT: '5432'
+  DB_NAME: 'msbiosuper_test'
+  DB_USER: 'test_user'
+  DB_PASSWORD: 'test_password'
+
+# ============================================
+# JOBS DEL PIPELINE
+# ============================================
+jobs:
+  # ==========================================
+  # JOB 1: BUILD - Compilación y empaquetado
+  # ==========================================
+  build:
+    name: 🔨 Build y Compilación
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    outputs:
+      # Outputs para otros jobs
+      version: ${{ steps.version.outputs.version }}
+      artifact-name: ${{ steps.version.outputs.artifact-name }}
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          # Fetch completo para análisis de calidad
+          fetch-depth: 0
+
+      # Configurar Java 21
+      - name: ☕ Configurar Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      # Cache de dependencias Maven
+      - name: 📦 Cache dependencias Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Validar estructura del proyecto
+      - name: 🔍 Validar estructura del proyecto
+        run: |
+          echo "Validando estructura del proyecto..."
+          if [ ! -f "pom.xml" ]; then
+            echo "❌ Error: pom.xml no encontrado"
+            exit 1
+          fi
+          if [ ! -d "src/main/java" ]; then
+            echo "❌ Error: directorio src/main/java no encontrado"
+            exit 1
+          fi
+          echo "✅ Estructura del proyecto válida"
+
+      # Obtener versión del proyecto
+      - name: 📋 Obtener versión del proyecto
+        id: version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          ARTIFACT_NAME="msbiosuper-${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "artifact-name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+          echo "📋 Versión del proyecto: ${VERSION}"
+
+      # Compilar el proyecto
+      - name: 🔨 Compilar proyecto
+        run: |
+          echo "🔨 Compilando proyecto con Maven..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} clean compile -DskipTests
+          echo "✅ Compilación exitosa"
+
+      # Empaquetar aplicación (JAR)
+      - name: 📦 Empaquetar aplicación
+        run: |
+          echo "📦 Empaquetando aplicación..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} package -DskipTests -P jar
+          
+          # Verificar que el JAR se creó correctamente
+          if [ -f "target/${{ steps.version.outputs.artifact-name }}.jar" ]; then
+            echo "✅ JAR creado exitosamente: ${{ steps.version.outputs.artifact-name }}.jar"
+            ls -la target/*.jar
+          else
+            echo "❌ Error: JAR no encontrado"
+            exit 1
+          fi
+
+      # Subir artefacto JAR
+      - name: 📤 Subir artefacto JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.artifact-name }}-jar
+          path: target/*.jar
+          retention-days: 30
+          if-no-files-found: error
+
+      # Subir logs de build
+      - name: 📤 Subir logs de build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            target/maven-archiver/
+            target/surefire-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ==========================================
+  # JOB 2: TEST - Pruebas unitarias e integración
+  # ==========================================
+  test:
+    name: 🧪 Pruebas y Cobertura
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+    
+    # Matriz de pruebas para diferentes perfiles
+    strategy:
+      matrix:
+        test-profile: ['test']
+        # Futuro: agregar más perfiles si es necesario
+        # test-profile: ['test', 'integration']
+      fail-fast: false
+    
+    # Servicios para pruebas de integración
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      # Configurar Java 21
+      - name: ☕ Configurar Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      # Restaurar cache de Maven
+      - name: 📦 Restaurar cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Descargar artefacto de build
+      - name: 📥 Descargar artefacto JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}-jar
+          path: target/
+
+      # Verificar conectividad con PostgreSQL
+      - name: 🔍 Verificar PostgreSQL
+        run: |
+          echo "🔍 Verificando conectividad con PostgreSQL..."
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          
+          # Esperar a que PostgreSQL esté listo
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U ${{ env.DB_USER }}; then
+              echo "✅ PostgreSQL está listo"
+              break
+            fi
+            echo "⏳ Esperando PostgreSQL... ($i/30)"
+            sleep 2
+          done
+          
+          # Verificar conexión
+          PGPASSWORD=${{ env.DB_PASSWORD }} psql -h localhost -U ${{ env.DB_USER }} -d ${{ env.DB_NAME }} -c "SELECT version();"
+
+      # Ejecutar pruebas unitarias
+      - name: 🧪 Ejecutar pruebas unitarias
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        run: |
+          echo "🧪 Ejecutando pruebas unitarias..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} test -P ${{ matrix.test-profile }} \
+            -Dspring.profiles.active=${{ env.SPRING_PROFILES_ACTIVE }} \
+            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/${{ env.DB_NAME }} \
+            -Dspring.datasource.username=${{ env.DB_USER }} \
+            -Dspring.datasource.password=${{ env.DB_PASSWORD }}
+
+      # Ejecutar pruebas de integración
+      - name: 🔗 Ejecutar pruebas de integración
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        run: |
+          echo "🔗 Ejecutando pruebas de integración..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} verify -P ${{ matrix.test-profile }} \
+            -Dspring.profiles.active=${{ env.SPRING_PROFILES_ACTIVE }} \
+            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/${{ env.DB_NAME }} \
+            -Dspring.datasource.username=${{ env.DB_USER }} \
+            -Dspring.datasource.password=${{ env.DB_PASSWORD }} \
+            -DskipUTs=true
+
+      # Generar reporte de cobertura
+      - name: 📊 Generar reporte de cobertura
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        run: |
+          echo "📊 Generando reporte de cobertura..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} jacoco:report
+
+      # Subir reportes de cobertura a Codecov
+      - name: 📤 Subir cobertura a Codecov
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        uses: codecov/codecov-action@v4
+        with:
+          file: target/site/jacoco/jacoco.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
+
+      # Subir reportes de pruebas
+      - name: 📤 Subir reportes de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.test-profile }}
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+            target/site/jacoco/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # Publicar resultados de pruebas
+      - name: 📋 Publicar resultados de pruebas
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Resultados de Pruebas (${{ matrix.test-profile }})
+          path: 'target/surefire-reports/*.xml,target/failsafe-reports/*.xml'
+          reporter: java-junit
+          fail-on-error: true
+
+  # ==========================================
+  # JOB 3: QUALITY - Análisis de calidad de código
+  # ==========================================
+  quality:
+    name: 🔍 Calidad de Código
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necesario para SonarCloud
+
+      # Configurar Java 21
+      - name: ☕ Configurar Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      # Restaurar cache de Maven
+      - name: 📦 Restaurar cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Cache de SonarCloud
+      - name: 📦 Cache SonarCloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Descargar artefacto de build
+      - name: 📥 Descargar artefacto JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}-jar
+          path: target/
+
+      # Análisis estático con SpotBugs
+      - name: 🔍 Análisis SpotBugs
+        run: |
+          echo "🔍 Ejecutando análisis SpotBugs..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} compile spotbugs:check || true
+          
+          # Generar reporte XML para procesamiento posterior
+          mvn ${{ env.MAVEN_CLI_OPTS }} spotbugs:spotbugs || true
+
+      # Análisis de dependencias con OWASP
+      - name: 🛡️ Análisis OWASP Dependency Check
+        run: |
+          echo "🛡️ Ejecutando OWASP Dependency Check..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=7 \
+            -DsuppressionsLocation=.github/owasp-suppressions.xml || true
+
+      # Análisis con PMD
+      - name: 📏 Análisis PMD
+        run: |
+          echo "📏 Ejecutando análisis PMD..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} pmd:check || true
+          mvn ${{ env.MAVEN_CLI_OPTS }} pmd:cpd-check || true
+
+      # Análisis con Checkstyle
+      - name: ✅ Análisis Checkstyle
+        run: |
+          echo "✅ Ejecutando análisis Checkstyle..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} checkstyle:check || true
+
+      # Análisis con SonarCloud (si está configurado)
+      - name: 🔍 Análisis SonarCloud
+        if: ${{ env.SONAR_TOKEN != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo "🔍 Ejecutando análisis SonarCloud..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} sonar:sonar \
+            -Dsonar.projectKey=msbiosuper-java21 \
+            -Dsonar.organization=acosux \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+      # Subir reportes de calidad
+      - name: 📤 Subir reportes de calidad
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            target/spotbugsXml.xml
+            target/dependency-check-report.html
+            target/pmd.xml
+            target/checkstyle-result.xml
+          retention-days: 30
+          if-no-files-found: ignore
+
+  # ==========================================
+  # JOB 4: SECURITY - Escaneo de seguridad
+  # ==========================================
+  security:
+    name: 🛡️ Escaneo de Seguridad
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      # Configurar Java 21
+      - name: ☕ Configurar Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      # Restaurar cache de Maven
+      - name: 📦 Restaurar cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Escaneo de vulnerabilidades con Trivy
+      - name: 🔍 Escaneo Trivy - Filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      # Subir resultados de Trivy a GitHub Security
+      - name: 📤 Subir resultados Trivy a GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # Escaneo de secretos con GitLeaks
+      - name: 🔐 Escaneo de secretos con GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      # Análisis de dependencias con Snyk (si está configurado)
+      - name: 🔍 Análisis Snyk
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: snyk/actions/maven@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      # OWASP Dependency Check detallado
+      - name: 🛡️ OWASP Dependency Check
+        run: |
+          echo "🛡️ Ejecutando OWASP Dependency Check detallado..."
+          mvn ${{ env.MAVEN_CLI_OPTS }} org.owasp:dependency-check-maven:check \
+            -DfailBuildOnCVSS=8 \
+            -DcveValidForHours=24 \
+            -DsuppressionsLocation=.github/owasp-suppressions.xml \
+            -Dformats=HTML,JSON,XML
+
+      # Subir reportes de seguridad
+      - name: 📤 Subir reportes de seguridad
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            trivy-results.sarif
+            target/dependency-check-report.html
+            target/dependency-check-report.json
+            target/dependency-check-report.xml
+          retention-days: 30
+          if-no-files-found: ignore
+
+  # ==========================================
+  # JOB 5: DOCKER - Build de imagen Docker
+  # ==========================================
+  docker:
+    name: 🐳 Build Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build, test, quality, security]
+    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch' }}
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      # Configurar Java 21
+      - name: ☕ Configurar Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      # Restaurar cache de Maven
+      - name: 📦 Restaurar cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Descargar artefacto de build
+      - name: 📥 Descargar artefacto JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}-jar
+          path: target/
+
+      # Configurar Docker Buildx
+      - name: 🔧 Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login a GitHub Container Registry
+      - name: 🔐 Login a GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extraer metadatos para Docker
+      - name: 📋 Extraer metadatos Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.build.outputs.version }}
+          labels: |
+            maintainer=Josias Rubén Aldaz Arcalles
+            org.opencontainers.image.title=MSBioSuper
+            org.opencontainers.image.description=MSBioSuper Microservice - Java 21 Migration
+            org.opencontainers.image.vendor=ACOSUX
+
+      # Build imagen Docker con Dockerfile
+      - name: 🐳 Build imagen Docker
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ needs.build.outputs.version }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+
+      # Escaneo de seguridad de imagen Docker con Trivy
+      - name: 🔍 Escaneo seguridad imagen Docker
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.meta.outputs.tags }}
+          format: 'sarif'
+          output: 'docker-trivy-results.sarif'
+
+      # Subir resultados de escaneo Docker
+      - name: 📤 Subir resultados escaneo Docker
+        if: always() && github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'docker-trivy-results.sarif'
+
+      # Build alternativo con Jib (comentado por defecto)
+      # - name: 🐳 Build imagen con Jib
+      #   if: false  # Deshabilitado por defecto, usar Dockerfile
+      #   run: |
+      #     echo "🐳 Building imagen con Jib..."
+      #     mvn ${{ env.MAVEN_CLI_OPTS }} jib:build -P jib \
+      #       -Djib.to.image=${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.DOCKER_IMAGE_NAME }}:${{ needs.build.outputs.version }}
+
+      # Generar SBOM (Software Bill of Materials)
+      - name: 📋 Generar SBOM
+        if: github.event_name != 'pull_request'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      # Subir SBOM
+      - name: 📤 Subir SBOM
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: 30
+
+  # ==========================================
+  # JOB 6: DEPLOY - Despliegue (opcional)
+  # ==========================================
+  deploy:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build, test, quality, security, docker]
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    environment: 
+      name: ${{ github.event.inputs.environment || 'staging' }}
+      url: ${{ steps.deploy.outputs.url }}
+    
+    steps:
+      # Checkout del código fuente
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      # Placeholder para despliegue
+      - name: 🚀 Deploy a ${{ github.event.inputs.environment || 'staging' }}
+        id: deploy
+        run: |
+          echo "🚀 Desplegando a ${{ github.event.inputs.environment || 'staging' }}..."
+          echo "📋 Imagen: ${{ needs.docker.outputs.image-tag }}"
+          echo "🔍 Digest: ${{ needs.docker.outputs.image-digest }}"
+          
+          # Aquí iría la lógica real de despliegue
+          # Por ejemplo: kubectl, docker-compose, etc.
+          
+          echo "url=https://msbiosuper-${{ github.event.inputs.environment || 'staging' }}.example.com" >> $GITHUB_OUTPUT
+          echo "✅ Despliegue completado"
+
+      # Smoke tests post-despliegue
+      - name: 🧪 Smoke Tests
+        run: |
+          echo "🧪 Ejecutando smoke tests..."
+          # Aquí irían los smoke tests reales
+          # Por ejemplo: curl health checks, pruebas básicas de API
+          echo "✅ Smoke tests completados"
+
+# ============================================
+# CONFIGURACIÓN DE CONCURRENCIA
+# ============================================
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# ============================================
+# PERMISOS REQUERIDOS
+# ============================================
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+  checks: write
+  pull-requests: write

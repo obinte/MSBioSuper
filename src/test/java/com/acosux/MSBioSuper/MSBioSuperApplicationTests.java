@@ -7,12 +7,14 @@ package com.acosux.MSBioSuper;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  *
  * @author mario
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class MSBioSuperApplicationTests {
 
     @Test

@@ -1,0 +1,16 @@
+# Infrastructure Layer (Capa de Infraestructura)
+
+Esta capa implementa preocupaciones técnicas y adaptadores a sistemas externos.
+
+## Componentes:
+- **Controladores REST**: Endpoints HTTP (adaptadores)
+- **Repositorios JPA**: Implementaciones de acceso a base de datos (adaptadores)
+- **Configuración de Seguridad**: JWT, configuración de Spring Security
+- **Clases de Configuración**: Beans de Spring, configuración de base de datos
+- **Manejadores de Excepciones**: Manejo global de errores
+
+## Reglas:
+- Depende de las capas de aplicación y dominio
+- Implementa interfaces de repositorio del dominio
+- Contiene todo el código específico de frameworks
+- Maneja preocupaciones técnicas (logging, monitoreo, etc.)

@@ -1,0 +1,15 @@
+# Shared Layer (Capa Compartida)
+
+Esta capa contiene utilidades y componentes compartidos entre todas las capas.
+
+## Componentes:
+- **Utilidades Comunes**: Funciones auxiliares reutilizables
+- **Excepciones Base**: Jerarquía de excepciones del sistema
+- **Constantes**: Valores constantes compartidos
+- **Tipos de Valor**: Value Objects compartidos
+- **Anotaciones Personalizadas**: Anotaciones reutilizables
+
+## Reglas:
+- Sin dependencias de otras capas de la aplicación
+- Solo utilidades genéricas y reutilizables
+- Puede ser usado por cualquier capa

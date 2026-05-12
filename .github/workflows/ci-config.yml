@@ -1,0 +1,140 @@
+# ============================================
+# Configuración del Workflow CI/CD
+# ============================================
+# 
+# Este archivo contiene configuraciones adicionales y variables
+# que pueden ser utilizadas por el workflow principal ci.yml
+#
+# Autor: Josias Rubén Aldaz Arcalles
+# Fecha: 2026-04-24
+# ============================================
+
+# Variables de configuración para diferentes entornos
+environments:
+  development:
+    java_opts: "-Xms128m -Xmx256m -XX:+UseZGC"
+    spring_profile: "dev"
+    database_url: "jdbc:postgresql://localhost:5432/msbiosuper_dev"
+    
+  testing:
+    java_opts: "-Xms256m -Xmx512m -XX:+UseZGC"
+    spring_profile: "test"
+    database_url: "jdbc:postgresql://localhost:5432/msbiosuper_test"
+    
+  staging:
+    java_opts: "-Xms512m -Xmx1024m -XX:+UseZGC -XX:+ZGenerational"
+    spring_profile: "staging"
+    database_url: "jdbc:postgresql://staging-db:5432/msbiosuper"
+    
+  production:
+    java_opts: "-Xms1024m -Xmx2048m -XX:+UseZGC -XX:+ZGenerational"
+    spring_profile: "prod"
+    database_url: "jdbc:postgresql://prod-db:5432/msbiosuper"
+
+# Configuración de herramientas de calidad
+quality_tools:
+  sonarcloud:
+    enabled: true
+    project_key: "msbiosuper-java21"
+    organization: "acosux"
+    
+  spotbugs:
+    enabled: true
+    effort: "max"
+    threshold: "medium"
+    
+  pmd:
+    enabled: true
+    ruleset: ".github/pmd-ruleset.xml"
+    
+  checkstyle:
+    enabled: true
+    config: ".github/checkstyle.xml"
+
+# Configuración de seguridad
+security:
+  trivy:
+    enabled: true
+    severity: "HIGH,CRITICAL"
+    
+  owasp:
+    enabled: true
+    cvss_threshold: 7.0
+    suppressions: ".github/owasp-suppressions.xml"
+    
+  snyk:
+    enabled: false  # Requiere token
+    severity_threshold: "high"
+    
+  gitleaks:
+    enabled: true
+    config: ".github/gitleaks.toml"
+
+# Configuración de Docker
+docker:
+  registry: "ghcr.io"
+  image_name: "msbiosuper"
+  platforms: 
+    - "linux/amd64"
+    - "linux/arm64"
+  build_args:
+    - "JAVA_VERSION=21"
+    - "SPRING_PROFILES_ACTIVE=prod"
+
+# Configuración de notificaciones
+notifications:
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channels:
+      success: "#deployments"
+      failure: "#alerts"
+      
+  email:
+    enabled: false
+    recipients:
+      - "dev-team@acosux.com"
+      - "devops@acosux.com"
+
+# Configuración de artefactos
+artifacts:
+  retention_days:
+    build: 30
+    test_reports: 30
+    quality_reports: 30
+    security_reports: 30
+    docker_sbom: 90
+    
+  upload_conditions:
+    build_logs: "always"
+    test_reports: "always"
+    quality_reports: "failure"
+    security_reports: "always"
+
+# Configuración de timeouts (en minutos)
+timeouts:
+  build: 15
+  test: 20
+  quality: 15
+  security: 15
+  docker: 20
+  deploy: 10
+
+# Configuración de matriz de pruebas
+test_matrix:
+  profiles:
+    - "test"
+    # Futuras matrices:
+    # - "integration"
+    # - "performance"
+  
+  java_versions:
+    - "21"
+    # Futuras versiones:
+    # - "22"
+    
+  os:
+    - "ubuntu-latest"
+    # Futuros OS:
+    # - "windows-latest"
+    # - "macos-latest"

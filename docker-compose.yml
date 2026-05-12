@@ -1,0 +1,310 @@
+# ============================================================================
+# Docker Compose para MSBioSuper - Desarrollo Local
+# ============================================================================
+# Este archivo define la configuración de servicios para desarrollo local:
+# - msbiosuper: Aplicación Spring Boot con Java 21
+# - postgres: Base de datos PostgreSQL 16
+#
+# INSTRUCCIONES DE USO:
+# 1. Copiar .env.example a .env y configurar variables
+# 2. Iniciar servicios: docker-compose up -d
+# 3. Ver logs: docker-compose logs -f
+# 4. Detener servicios: docker-compose down
+# 5. Detener y eliminar volúmenes: docker-compose down -v
+#
+# REQUISITOS:
+# - Docker Engine 20.10+
+# - Docker Compose 2.0+
+# - Archivo .env con variables de entorno configuradas
+# ============================================================================
+
+
+# ============================================================================
+# SERVICIOS
+# ============================================================================
+services:
+  # --------------------------------------------------------------------------
+  # Servicio: PostgreSQL Database
+  # --------------------------------------------------------------------------
+  postgres:
+    # Imagen oficial de PostgreSQL 16 (Alpine para menor tamaño)
+    image: postgres:16-alpine
+    
+    # Nombre del contenedor
+    container_name: msbiosuper-postgres
+    
+    # Reiniciar automáticamente en caso de fallo
+    restart: unless-stopped
+    
+    # Variables de entorno para PostgreSQL
+    environment:
+      # Usuario administrador de PostgreSQL
+      POSTGRES_USER: ${JDBC_USER:-administradores}
+      
+      # Contraseña del usuario administrador
+      POSTGRES_PASSWORD: ${JDBC_PASSWORD:-@dm1n$$t0d0c0mPU$$}
+      
+      # Nombre de la base de datos a crear
+      POSTGRES_DB: ${JDBC_DATABASE:-cipolliny_Abril_2026}
+      
+      # Configuración de zona horaria
+      TZ: America/Guayaquil
+      
+      # Configuración de encoding
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_EC.UTF-8"
+    
+    # Puertos expuestos (host:container)
+    ports:
+       - "5433:5432"
+    
+    # Volúmenes para persistencia de datos
+    volumes:
+      # Datos de PostgreSQL (persistentes)
+      - postgres_data:/var/lib/postgresql/data
+      
+      # Scripts de inicialización (opcional)
+      # Descomentar si se necesitan scripts SQL de inicialización
+      # - ./scripts/init-db:/docker-entrypoint-initdb.d
+    
+    # Configuración de red
+    networks:
+      - msbiosuper-network
+    
+    # Health check para verificar que PostgreSQL está listo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${JDBC_USER:-administradores} -d ${JDBC_DATABASE:-cipolliny_Abril_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Configuración de recursos (opcional, ajustar según necesidad)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # --------------------------------------------------------------------------
+  # Servicio: MSBioSuper Application
+  # --------------------------------------------------------------------------
+  msbiosuper:
+    # Construir imagen desde Dockerfile local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Argumentos de build (opcional)
+      args:
+        - JAVA_VERSION=21
+    
+    # Nombre del contenedor
+    container_name: msbiosuper-app
+    
+    # Reiniciar automáticamente en caso de fallo
+    restart: unless-stopped
+    
+    # Dependencias: esperar a que postgres esté saludable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    # Variables de entorno para la aplicación
+    environment:
+      # ========================================
+      # Configuración de Base de Datos
+      # ========================================
+      JDBC_SERVER: ${JDBC_SERVER:-host.docker.internal}
+      JDBC_PORT: ${JDBC_PORT:-5432}
+      JDBC_DATABASE: ${JDBC_DATABASE:-cipolliny_Abril_2026}
+      JDBC_USER: ${JDBC_USER:-administradores}
+      JDBC_PASSWORD: ${JDBC_PASSWORD:-@dm1n$t0d0c0mPU$}
+      
+      # ========================================
+      # Configuración de Seguridad JWT
+      # ========================================
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      
+      # ========================================
+      # Configuración de CORS
+      # ========================================
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:4200}
+      
+      # ========================================
+      # Configuración de Spring Boot
+      # ========================================
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SERVER_PORT: 8080
+      MANAGEMENT_SERVER_PORT: 8081
+      
+      # ========================================
+      # Configuración de JVM
+      # ========================================
+      JAVA_OPTS: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+ZGenerational"
+      
+      # ========================================
+      # Configuración de Zona Horaria
+      # ========================================
+      TZ: America/Guayaquil
+    
+    # Puertos expuestos (host:container)
+    ports:
+      # Puerto de la aplicación
+      - "8082:8080"
+      
+      # Puerto de Actuator/Management
+      - "8083:8081"
+      
+    
+    # Volúmenes para logs y configuración
+    volumes:
+      # Logs de la aplicación (persistentes)
+      - msbiosuper_logs:/app/logs
+      
+      # Configuración externa (opcional)
+      # Descomentar para usar configuración externa
+      # - ./config:/app/config:ro
+    
+    # Configuración de red
+    networks:
+      - msbiosuper-network
+    
+    # Health check para verificar que la aplicación está lista
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health/liveness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Configuración de recursos (opcional, ajustar según necesidad)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    
+    # Configuración de logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================================================
+# VOLÚMENES
+# ============================================================================
+# Volúmenes nombrados para persistencia de datos
+volumes:
+  # Datos de PostgreSQL
+  postgres_data:
+    driver: local
+    name: msbiosuper_postgres_data
+  
+  # Logs de la aplicación
+  msbiosuper_logs:
+    driver: local
+    name: msbiosuper_logs
+
+# ============================================================================
+# REDES
+# ============================================================================
+# Red personalizada para comunicación entre servicios
+networks:
+  msbiosuper-network:
+    driver: bridge
+    name: msbiosuper-network
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ============================================================================
+# NOTAS ADICIONALES
+# ============================================================================
+#
+# COMANDOS ÚTILES:
+# ----------------
+# Iniciar servicios en background:
+#   docker-compose up -d
+#
+# Ver logs en tiempo real:
+#   docker-compose logs -f
+#   docker-compose logs -f msbiosuper
+#   docker-compose logs -f postgres
+#
+# Detener servicios:
+#   docker-compose stop
+#
+# Detener y eliminar contenedores:
+#   docker-compose down
+#
+# Detener, eliminar contenedores y volúmenes:
+#   docker-compose down -v
+#
+# Reconstruir imágenes:
+#   docker-compose build --no-cache
+#   docker-compose up -d --build
+#
+# Ejecutar comandos en contenedor:
+#   docker-compose exec msbiosuper sh
+#   docker-compose exec postgres psql -U administradores -d cipolliny_Abril_2026
+#
+# Ver estado de servicios:
+#   docker-compose ps
+#
+# Ver uso de recursos:
+#   docker stats
+#
+# ACCESO A SERVICIOS:
+# -------------------
+# Aplicación MSBioSuper:
+#   - API: http://localhost:8080
+#   - Swagger UI: http://localhost:8080/swagger-ui.html
+#   - OpenAPI Docs: http://localhost:8080/v3/api-docs
+#   - Health Check: http://localhost:8081/actuator/health
+#   - Metrics: http://localhost:8081/actuator/prometheus
+#
+# PostgreSQL:
+#   - Host: localhost
+#   - Port: 5432
+#   - Database: cipolliny_Abril_2026
+#   - User: administradores
+#   - Password: (ver .env)
+#
+# PERSISTENCIA DE DATOS:
+# ----------------------
+# Los datos de PostgreSQL se almacenan en el volumen 'postgres_data'
+# Los logs de la aplicación se almacenan en el volumen 'msbiosuper_logs'
+#
+# Para eliminar todos los datos:
+#   docker-compose down -v
+#
+# Para hacer backup de la base de datos:
+#   docker-compose exec postgres pg_dump -U administradores cipolliny_Abril_2026 > backup.sql
+#
+# Para restaurar backup:
+#   docker-compose exec -T postgres psql -U administradores cipolliny_Abril_2026 < backup.sql
+#
+# TROUBLESHOOTING:
+# ----------------
+# Si la aplicación no puede conectarse a PostgreSQL:
+# 1. Verificar que postgres está saludable: docker-compose ps
+# 2. Verificar logs de postgres: docker-compose logs postgres
+# 3. Verificar variables de entorno: docker-compose config
+# 4. Verificar conectividad: docker-compose exec msbiosuper ping postgres
+#
+# Si hay problemas de permisos:
+# 1. Verificar permisos de volúmenes: docker volume inspect msbiosuper_postgres_data
+# 2. Recrear volúmenes: docker-compose down -v && docker-compose up -d
+#
+# Si hay problemas de memoria:
+# 1. Ajustar límites de recursos en deploy.resources
+# 2. Ajustar JAVA_OPTS para reducir memoria de JVM
+#
+# ============================================================================

@@ -1,0 +1,124 @@
+# ============================================
+# Configuración GitLeaks para MSBioSuper
+# ============================================
+# 
+# Este archivo configura GitLeaks para detectar secretos
+# y credenciales en el código fuente.
+#
+# Autor: Josias Rubén Aldaz Arcalles
+# Fecha: 2026-04-24
+# ============================================
+
+title = "GitLeaks Config - MSBioSuper"
+
+# ============================================
+# CONFIGURACIÓN GLOBAL
+# ============================================
+
+[extend]
+# Usar configuración base de GitLeaks
+useDefault = true
+
+# ============================================
+# REGLAS PERSONALIZADAS
+# ============================================
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret Key"
+regex = '''(?i)(jwt[_-]?secret|secret[_-]?key|signing[_-]?key)\s*[:=]\s*['""]?([a-zA-Z0-9+/]{32,})['""]?'''
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "database-password"
+description = "Database Password"
+regex = '''(?i)(db[_-]?password|database[_-]?password|postgres[_-]?password)\s*[:=]\s*['""]?([^'"\s]{8,})['""]?'''
+tags = ["database", "password"]
+
+[[rules]]
+id = "spring-datasource"
+description = "Spring Datasource Password"
+regex = '''spring\.datasource\.password\s*[:=]\s*['""]?([^'"\s]{8,})['""]?'''
+tags = ["spring", "datasource", "password"]
+
+[[rules]]
+id = "api-key"
+description = "API Key"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['""]?([a-zA-Z0-9]{20,})['""]?'''
+tags = ["api", "key"]
+
+# ============================================
+# ALLOWLIST - Archivos y patrones a ignorar
+# ============================================
+
+[allowlist]
+description = "Allowlist para MSBioSuper"
+
+# Archivos de configuración de ejemplo
+paths = [
+    ".env.example",
+    "application-example.properties",
+    "docker-compose.example.yml",
+    ".github/workflows/README.md",
+    "docs/**/*.md"
+]
+
+# Patrones de texto a ignorar
+regexes = [
+    # Valores de ejemplo o placeholder
+    '''(?i)(example|placeholder|dummy|test|sample)''',
+    
+    # Secretos de prueba conocidos
+    '''test[_-]?secret''',
+    '''dummy[_-]?password''',
+    '''changeme''',
+    '''password123''',
+    
+    # Comentarios que mencionan secretos
+    '''#.*(?i)(password|secret|key)''',
+    '''//.*(?i)(password|secret|key)''',
+    '''<!--.*(?i)(password|secret|key).*-->''',
+    
+    # Variables de entorno en documentación
+    '''\$\{[A-Z_]+\}''',
+    '''ENV_VAR''',
+    '''YOUR_SECRET_HERE''',
+    
+    # Hashes y checksums (no son secretos)
+    '''[a-f0-9]{32,64}''',
+    
+    # Base64 de ejemplo (muy corto o muy común)
+    '''(?i)(base64|encoded).*[a-zA-Z0-9+/]{8,16}=*''',
+]
+
+# Commits a ignorar (por hash)
+commits = [
+    # Agregar hashes de commits que contengan secretos de prueba
+]
+
+# ============================================
+# CONFIGURACIÓN DE ESCANEO
+# ============================================
+
+# Profundidad de escaneo en el historial
+[git]
+# Escanear todo el historial (0 = ilimitado)
+depth = 0
+
+# Escanear archivos no rastreados
+includeUntracked = true
+
+# ============================================
+# CONFIGURACIÓN DE SALIDA
+# ============================================
+
+# Formato de salida
+[output]
+format = "json"
+path = "gitleaks-report.json"
+
+# Nivel de verbosidad
+verbose = true
+
+# Mostrar solo violaciones únicas
+unique = true

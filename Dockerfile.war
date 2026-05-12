@@ -1,0 +1,82 @@
+# ============================================================================
+# Dockerfile para MSBioSuper - Despliegue WAR en Tomcat
+# ============================================================================
+# Este Dockerfile implementa un build multi-etapa para desplegar la aplicación
+# como WAR en un servidor Tomcat 10 (compatible con Jakarta EE 10).
+#
+# Etapa 1: Build - Compila la aplicación como WAR con Maven
+# Etapa 2: Runtime - Despliega el WAR en Tomcat 10
+# ============================================================================
+
+# ============================================================================
+# ETAPA 1: BUILD
+# ============================================================================
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+LABEL stage=builder
+LABEL description="Etapa de construcción WAR para MSBioSuper"
+
+WORKDIR /build
+
+# Copiar archivos de configuración de Maven
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn .mvn
+
+# Descargar dependencias (capa cacheada)
+RUN chmod +x ./mvnw && \
+    ./mvnw dependency:go-offline -B
+
+# Copiar código fuente
+COPY src ./src
+
+# Compilar la aplicación como WAR usando el perfil 'war'
+RUN ./mvnw clean package -P war -DskipTests -B && \
+    ls -lh /build/target/*.war
+
+# ============================================================================
+# ETAPA 2: RUNTIME - TOMCAT 10
+# ============================================================================
+FROM tomcat:10.1-jre21-temurin-jammy AS runtime
+
+LABEL maintainer="Josias Rubén Aldaz Arcalles" \
+      description="MSBioSuper Microservice - WAR deployment on Tomcat 10" \
+      version="1.0"
+
+# Instalar dependencias del sistema
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+# Configurar zona horaria
+ENV TZ=America/Guayaquil
+
+# Crear usuario no-root para seguridad
+RUN groupadd -g 1001 msbiosuper && \
+    useradd -u 1001 -g msbiosuper -s /bin/bash msbiosuper && \
+    mkdir -p /app/logs && \
+    chown -R msbiosuper:msbiosuper /usr/local/tomcat /app
+
+# Limpiar webapps por defecto de Tomcat
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copiar el WAR compilado desde la etapa de build
+COPY --from=builder --chown=msbiosuper:msbiosuper /build/target/MSBioSuper-1.0.war /usr/local/tomcat/webapps/ROOT.war
+
+# Cambiar al usuario no-root
+USER msbiosuper
+
+# Exponer puerto de Tomcat
+EXPOSE 8080
+
+# Variables de entorno para Tomcat y JVM
+ENV CATALINA_OPTS="-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseZGC -XX:+ZGenerational" \
+    JAVA_OPTS="-Djava.security.egd=file:/dev/./urandom" \
+    SPRING_PROFILES_ACTIVE="prod"
+
+# Health check usando el endpoint de Actuator
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health/liveness || exit 1
+
+# Comando de inicio de Tomcat
+CMD ["catalina.sh", "run"]

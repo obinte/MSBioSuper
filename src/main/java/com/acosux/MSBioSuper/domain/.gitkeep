@@ -1,0 +1,14 @@
+# Domain Layer (Capa de Dominio)
+
+Esta capa contiene la lógica de negocio pura, independiente de frameworks e infraestructura.
+
+## Componentes:
+- **Entidades de Dominio**: Objetos de negocio con comportamiento
+- **Interfaces de Repositorio (Puertos)**: Contratos para acceso a datos
+- **Servicios de Dominio**: Lógica de negocio compleja
+- **Excepciones de Dominio**: Violaciones de reglas de negocio
+
+## Reglas:
+- Sin dependencias de Spring, Hibernate o cualquier framework
+- Solo objetos Java puros con lógica de negocio
+- Depende únicamente de la biblioteca estándar de Java
