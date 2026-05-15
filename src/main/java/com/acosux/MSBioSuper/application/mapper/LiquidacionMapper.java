@@ -2,7 +2,9 @@ package com.acosux.MSBioSuper.application.mapper;
 
 import com.acosux.MSBioSuper.application.dto.LiquidacionRequest;
 import com.acosux.MSBioSuper.application.dto.LiquidacionResponse;
+import com.acosux.MSBioSuper.application.dto.LiquidacionDetalleProductoResponse;
 import com.acosux.MSBioSuper.domain.model.PrdLiquidacionesDetalleTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionDetalleProductoTO;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -101,6 +103,57 @@ public class LiquidacionMapper {
 
         return entities.stream()
             .map(this::toResponse)
+            .toList();
+    }
+
+    /**
+     * Convierte una entidad PrdLiquidacionDetalleProductoTO a un DTO de respuesta.
+     *
+     * @param entity Entidad de dominio
+     * @return DTO de respuesta
+     */
+    public LiquidacionDetalleProductoResponse toDetalleProductoResponse(PrdLiquidacionDetalleProductoTO entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        return new LiquidacionDetalleProductoResponse(
+            entity.getId(),
+            entity.getLiqNumeroSistema(),
+            entity.getLiqFecha(),
+            entity.getLiqClienteId(),
+            entity.getLiqClienteRazonSocial(),
+            entity.getLiqProveedorId(),
+            entity.getLiqProveedorRazonSocial(),
+            entity.getLiqLote(),
+            entity.getDetProductoCodigo(),
+            entity.getDetProductoNombre(),
+            entity.getDetProductoClase(),
+            entity.getDetProductoTipo(),
+            entity.getDetLibras(),
+            entity.getDetPrecio(),
+            entity.getPisSector(),
+            entity.getPisNumero(),
+            entity.getLiqTallaCodigo(),
+            entity.getLiqTallaDetalle(),
+            entity.getLiqTipoCodigo(),
+            entity.getLiqTipoDetalle()
+        );
+    }
+
+    /**
+     * Convierte una lista de entidades PrdLiquidacionDetalleProductoTO a una lista de DTOs de respuesta.
+     *
+     * @param entities Lista de entidades
+     * @return Lista de DTOs de respuesta
+     */
+    public List<LiquidacionDetalleProductoResponse> toDetalleProductoResponseList(List<PrdLiquidacionDetalleProductoTO> entities) {
+        if (entities == null) {
+            return List.of();
+        }
+
+        return entities.stream()
+            .map(this::toDetalleProductoResponse)
             .toList();
     }
 }

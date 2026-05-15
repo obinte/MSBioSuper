@@ -1,6 +1,7 @@
 package com.acosux.MSBioSuper.domain.repository;
 
 import com.acosux.MSBioSuper.domain.model.PrdLiquidacionesDetalleTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionDetalleProductoTO;
 import java.util.List;
 import java.util.Optional;
 
@@ -136,7 +137,7 @@ public interface LiquidacionRepository {
      * @param tipo Tipo de liquidación (puede ser null)
      * @return Lista de liquidaciones detalle de producto
      */
-    List<PrdLiquidacionesDetalleTO> findLiquidacionDetalleProducto(
+    List<PrdLiquidacionDetalleProductoTO> findLiquidacionDetalleProducto(
             String empresa,
             String sector,
             String piscina,

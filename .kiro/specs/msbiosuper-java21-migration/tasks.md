@@ -640,7 +640,7 @@ Este plan de implementación divide la migración completa de MSBioSuper de Java
     - _Requisitos: NFR-7_
 
 - [ ] 36. Configurar pipeline CI/CD (opcional)
-  - [ ] 36.1 Crear workflow GitHub Actions (o GitLab CI)
+  - [~] 36.1 Crear workflow GitHub Actions (o GitLab CI)
     - Configurar job de build
     - Configurar job de pruebas
     - Configurar job de calidad de código
@@ -648,13 +648,13 @@ Este plan de implementación divide la migración completa de MSBioSuper de Java
     - Configurar job de build de imagen Docker
     - _Requisitos: TR-26_
   
-  - [ ] 36.2 Configurar pruebas automatizadas
+  - [~] 36.2 Configurar pruebas automatizadas
     - Ejecutar pruebas unitarias en cada commit
     - Ejecutar pruebas de integración en pull requests
     - Generar reportes de cobertura de código
     - _Requisitos: TR-26_
   
-  - [ ] 36.3 Configurar despliegue automatizado a staging
+  - [~] 36.3 Configurar despliegue automatizado a staging
     - Desplegar a staging en merge a main
     - Ejecutar smoke tests después del despliegue
     - _Requisitos: TR-26_
@@ -710,7 +710,7 @@ La migración está completa cuando:
 - [x] Los 12 endpoints de API son funcionales con Java 21
 - [x] Todas las pruebas pasan (unitarias, integración, API)
 - [-] Cobertura de código > 80%
-- [ ] Objetivos de rendimiento cumplidos (p95 < 500ms)
+- [~] Objetivos de rendimiento cumplidos (p95 < 500ms)
 - [x] Requisitos de seguridad satisfechos (JWT, validación de entrada)
 - [x] Documentación completa (README, DEPLOYMENT, ARCHITECTURE)
 - [x] Imagen Docker se construye exitosamente

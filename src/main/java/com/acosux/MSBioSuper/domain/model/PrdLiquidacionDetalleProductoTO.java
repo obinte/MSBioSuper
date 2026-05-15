@@ -66,16 +66,16 @@ public class PrdLiquidacionDetalleProductoTO implements Serializable {
     @Column(name = "pis_numero")
     private String pisNumero;
 
-    @Column(name = "liq_talla_codigo")
+    @Column(name = "talla_codigo")
     private String liqTallaCodigo;
 
-    @Column(name = "liq_talla_detalle")
+    @Column(name = "talla_detalle")
     private String liqTallaDetalle;
 
-    @Column(name = "liq_tipo_codigo")
+    @Column(name = "prod_tipo")
     private String liqTipoCodigo;
 
-    @Column(name = "liq_tipo_detalle")
+    @Column(name = "prod_detalle")
     private String liqTipoDetalle;
 
     public PrdLiquidacionDetalleProductoTO() {

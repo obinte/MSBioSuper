@@ -1,9 +1,9 @@
 package com.acosux.MSBioSuper.application.usecase;
 
 import com.acosux.MSBioSuper.application.dto.LiquidacionRequest;
-import com.acosux.MSBioSuper.application.dto.LiquidacionResponse;
+import com.acosux.MSBioSuper.application.dto.LiquidacionDetalleProductoResponse;
 import com.acosux.MSBioSuper.application.mapper.LiquidacionMapper;
-import com.acosux.MSBioSuper.domain.model.PrdLiquidacionesDetalleTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionDetalleProductoTO;
 import com.acosux.MSBioSuper.domain.repository.LiquidacionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,14 +52,14 @@ public class GetLiquidacionDetalleUseCase {
      * @param request DTO con los criterios de búsqueda
      * @return Lista de liquidaciones detalladas que cumplen los criterios
      */
-    public List<LiquidacionResponse> execute(LiquidacionRequest request) {
+    public List<LiquidacionDetalleProductoResponse> execute(LiquidacionRequest request) {
         // Validar que la solicitud no sea nula
         if (request == null) {
             throw new IllegalArgumentException("La solicitud no puede ser nula");
         }
 
         // Obtener las liquidaciones detalle desde el repositorio usando la función de PostgreSQL
-        List<PrdLiquidacionesDetalleTO> liquidacionesEntidad = liquidacionRepository.findLiquidacionDetalleProducto(
+        List<PrdLiquidacionDetalleProductoTO> liquidacionesEntidad = liquidacionRepository.findLiquidacionDetalleProducto(
                 request.empresa(),
                 request.sector(),
                 request.piscina(),
@@ -73,11 +73,11 @@ public class GetLiquidacionDetalleUseCase {
         // Aplicar filtro adicional por corrida si se especifica
         if (request.corrida() != null && !request.corrida().isBlank()) {
             liquidacionesEntidad = liquidacionesEntidad.stream()
-                    .filter(l -> request.corrida().equals(l.getLiqCorrida()))
+                    .filter(l -> request.corrida().equals(l.getLiqLote()))
                     .toList();
         }
 
         // Convertir las entidades de dominio a DTOs de respuesta
-        return liquidacionMapper.toResponseList(liquidacionesEntidad);
+        return liquidacionMapper.toDetalleProductoResponseList(liquidacionesEntidad);
     }
 }

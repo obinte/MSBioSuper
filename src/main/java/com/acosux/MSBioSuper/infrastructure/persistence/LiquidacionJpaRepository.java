@@ -1,6 +1,7 @@
 package com.acosux.MSBioSuper.infrastructure.persistence;
 
 import com.acosux.MSBioSuper.domain.model.PrdLiquidacionesDetalleTO;
+import com.acosux.MSBioSuper.domain.model.PrdLiquidacionDetalleProductoTO;
 import com.acosux.MSBioSuper.domain.repository.LiquidacionRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -150,9 +151,9 @@ public interface LiquidacionJpaRepository extends JpaRepository<PrdLiquidaciones
      */
     @Override
     @Query(value = "SELECT * FROM produccion.fun_liquidacion_detalle_producto(" +
-            ":empresa, :sector, :piscina, :desde, :hasta, :cliente, :talla, :tipo)",
+            ":empresa, :sector, :piscina, CAST(:desde AS date), CAST(:hasta AS date), :cliente, :talla, :tipo)",
             nativeQuery = true)
-    List<PrdLiquidacionesDetalleTO> findLiquidacionDetalleProducto(
+    List<PrdLiquidacionDetalleProductoTO> findLiquidacionDetalleProducto(
             @Param("empresa") String empresa,
             @Param("sector") String sector,
             @Param("piscina") String piscina,
@@ -171,7 +172,7 @@ public interface LiquidacionJpaRepository extends JpaRepository<PrdLiquidaciones
      */
     @Override
     @Query(value = "SELECT * FROM produccion.fun_liquidaciones_detalle(" +
-            ":empresa, :desde, :hasta)",
+            ":empresa, CAST(:desde AS date), CAST(:hasta AS date))",
             nativeQuery = true)
     List<PrdLiquidacionesDetalleTO> findLiquidacionesDetalle(
             @Param("empresa") String empresa,

@@ -120,7 +120,7 @@ services:
       JDBC_PORT: ${JDBC_PORT:-5432}
       JDBC_DATABASE: ${JDBC_DATABASE:-cipolliny_Abril_2026}
       JDBC_USER: ${JDBC_USER:-administradores}
-      JDBC_PASSWORD: ${JDBC_PASSWORD:-@dm1n$t0d0c0mPU$}
+      JDBC_PASSWORD: ${JDBC_PASSWORD:-@dm1n$$t0d0c0mPU$$}
       
       # ========================================
       # Configuración de Seguridad JWT

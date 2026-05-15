@@ -276,7 +276,7 @@ public class MSBioSuperController {
             @Parameter(description = "Criterios de búsqueda para liquidaciones", required = true)
             @Valid @RequestBody LiquidacionRequest requestDto) {
         RespuestaWebTO resp = new RespuestaWebTO();
-        List<LiquidacionResponse> respues = getLiquidacionDetalleUseCase.execute(requestDto);
+        List<LiquidacionDetalleProductoResponse> respues = getLiquidacionDetalleUseCase.execute(requestDto);
         if (respues != null && !respues.isEmpty()) {
             resp.setEstadoOperacion(RespuestaWebTO.EstadoOperacionEnum.EXITO.getValor());
             resp.setExtraInfo(respues);

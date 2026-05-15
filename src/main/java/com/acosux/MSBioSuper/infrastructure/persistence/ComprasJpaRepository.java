@@ -106,7 +106,9 @@ public interface ComprasJpaRepository extends JpaRepository<InvComprasDetallePro
      */
     @Override
     @Query(value = "SELECT * FROM inventario.fun_compras_detalle_producto(" +
-            ":empresa, :sector, :piscina, :proveedor, :producto, :fechaDesde, :fechaHasta, :bodega, :incluirIMB)",
+            ":empresa, :sector, :piscina, :proveedor, :producto, " +
+            "CAST(:fechaDesde AS date), CAST(:fechaHasta AS date), " +
+            ":bodega, :incluirIMB)",
             nativeQuery = true)
     List<InvComprasDetalleProductoTO> findComprasDetalleProducto(
             @Param("empresa") String empresa,
