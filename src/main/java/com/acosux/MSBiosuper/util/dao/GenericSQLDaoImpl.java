@@ -4,10 +4,12 @@ import org.apache.poi.ss.formula.functions.T;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.type.StandardBasicTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class GenericSQLDaoImpl implements GenericSQLDao {
@@ -19,6 +21,20 @@ public class GenericSQLDaoImpl implements GenericSQLDao {
     @Override
     public <T> List<T> obtenerPorSql(String consulta, Class<T> type) {
         Query query = session().createSQLQuery(consulta).addEntity(type.getName());
+        return query.list();
+    }
+
+    @SuppressWarnings({"hiding", "unchecked"})
+    @Override
+    public <T> List<T> obtenerPorSql(String consulta, Class<T> type, Map<String, Object> parametros) {
+        Query query = session().createSQLQuery(consulta).addEntity(type.getName());
+        for (Map.Entry<String, Object> parametro : parametros.entrySet()) {
+            if (parametro.getValue() == null) {
+                query.setParameter(parametro.getKey(), null, StandardBasicTypes.STRING);
+            } else {
+                query.setParameter(parametro.getKey(), parametro.getValue());
+            }
+        }
         return query.list();
     }
 
