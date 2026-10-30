@@ -17,7 +17,7 @@ public class VerifyTokenFilter implements javax.servlet.Filter {
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain filterChain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) req;
         String a = request.getRequestURI();
-        if (a != null && (a.equals("/MSBioSuper/") || a.contains("api-docs") || a.contains("swagger") || a.contains("token"))) {
+        if (a != null && (a.equals(request.getContextPath() + "/") || a.contains("api-docs") || a.contains("swagger") || a.contains("token"))) {
             SecurityContextHolder.getContext().setAuthentication(Optional.of(new UserAuthentication(new TokenUser("admin", a))).get());
             filterChain.doFilter(req, res);
             return;
