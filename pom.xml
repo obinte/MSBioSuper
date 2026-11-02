@@ -122,7 +122,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.2.18</version>
+            <version>42.7.14</version>
         </dependency>
         <!-- Credenciales de base de datos desde AWS Secrets Manager (aws.secret.name, US-198) -->
         <dependency>
