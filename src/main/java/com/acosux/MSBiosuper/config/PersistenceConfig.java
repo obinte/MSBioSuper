@@ -57,7 +57,13 @@ public class PersistenceConfig {
         String password = env.getProperty("jdbc.password");
 
         // AWS Secrets Manager — nombre del secret configurable desde application.properties
-        // (mismo mecanismo que MSVitapro/ShrimpSoftServer, US-190/US-198).
+        // (mismo mecanismo que MSVitapro/ShrimpSoftServer, US-190/US-198). Dos formatos:
+        //  - por servidor (US-240): un secreto por servidor de microservicios (ms.acosux.com) con
+        //    una clave por rol: {"ms_biosuper":"<contraseña>", "ms_abricmar":"...", ...}. El
+        //    usuario es jdbc.user del properties (no es secreto) y la contraseña es la clave con
+        //    ese nombre.
+        //  - por credencial (US-198): {"jdbc.user":"...","jdbc.password":"..."}. Se usa cuando el
+        //    secreto trae jdbc.user o jdbc.password.
         String secretName = env.getProperty("aws.secret.name");
         String origenUsuario = "application.properties";
         String origenPassword = "application.properties";
@@ -68,6 +74,16 @@ public class PersistenceConfig {
                 if (secrets.isLoaded()) {
                     String secretUser = secrets.get("jdbc.user", null);
                     String secretPassword = secrets.get("jdbc.password", null);
+                    boolean porServidor = secretUser == null && secretPassword == null
+                            && username != null && !username.isEmpty();
+                    if (porServidor) {
+                        // Formato por servidor: la clave es el nombre del rol (jdbc.user).
+                        secretPassword = secrets.get(username, null);
+                        if (secretPassword == null) {
+                            LOG.log(Level.SEVERE, "[PersistenceConfig] El secreto {0} no tiene la clave {1} (jdbc.user)",
+                                    new Object[]{secretName, username});
+                        }
+                    }
                     if (secretUser != null) {
                         username = secretUser;
                         origenUsuario = "AWS Secrets Manager (" + secretName + ")";
@@ -77,7 +93,7 @@ public class PersistenceConfig {
                         origenPassword = "AWS Secrets Manager (" + secretName + ")";
                     }
                     LOG.log(Level.INFO, "[PersistenceConfig] Credentials loaded from AWS Secrets Manager ({0})", secretName);
-                    if (secretUser == null || secretPassword == null) {
+                    if (!porServidor && (secretUser == null || secretPassword == null)) {
                         LOG.log(Level.SEVERE, "[PersistenceConfig] El secreto {0} no tiene las claves jdbc.user y jdbc.password: "
                                 + "se usa application.properties para la que falta", secretName);
                     }
